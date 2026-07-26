@@ -1,24 +1,58 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, FolderOpen, Sparkles, Megaphone } from "lucide-react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: Landing,
+  head: () => ({
+    meta: [
+      { title: "CampusLink — Connect, Share, Learn" },
+      { name: "description", content: "A smart campus platform for real-time chat, resource sharing, and AI-powered academic support." },
+    ],
+  }),
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Landing() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+      <header className="border-b bg-background/70 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2 font-semibold">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">C</div>
+            CampusLink
+          </div>
+          <div className="flex gap-2">
+            <Link to="/auth"><Button variant="ghost">Sign in</Button></Link>
+            <Link to="/auth"><Button>Get started</Button></Link>
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-6 py-20">
+        <section className="text-center">
+          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">Your campus, connected.</h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+            Real-time messaging, shared study resources, and an AI tutor that helps you learn — one platform for students, faculty, and administration.
+          </p>
+          <div className="mt-8 flex justify-center gap-3">
+            <Link to="/auth"><Button size="lg">Create your account</Button></Link>
+            <Link to="/chat"><Button size="lg" variant="outline">Enter the app</Button></Link>
+          </div>
+        </section>
+        <section className="mt-24 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: MessageSquare, title: "Real-time chat", body: "Direct messages, study groups, and course channels powered by realtime." },
+            { icon: Megaphone, title: "Announcements", body: "Faculty and admins broadcast urgent updates to the whole campus." },
+            { icon: FolderOpen, title: "Resource hub", body: "Upload lecture notes, past papers, and slides. Search by course and tag." },
+            { icon: Sparkles, title: "AI tutor", body: "A Socratic assistant that explains concepts without giving away answers." },
+          ].map((f) => (
+            <div key={f.title} className="rounded-xl border bg-card p-6">
+              <f.icon className="h-6 w-6 text-primary" />
+              <h3 className="mt-3 font-semibold">{f.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{f.body}</p>
+            </div>
+          ))}
+        </section>
+      </main>
     </div>
   );
 }
