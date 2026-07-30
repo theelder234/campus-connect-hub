@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTutorRouteImport } from './routes/_authenticated/tutor'
+import { Route as AuthenticatedStudyNotesRouteImport } from './routes/_authenticated/study-notes'
 import { Route as AuthenticatedResourcesRouteImport } from './routes/_authenticated/resources'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
@@ -35,6 +36,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedTutorRoute = AuthenticatedTutorRouteImport.update({
   id: '/tutor',
   path: '/tutor',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStudyNotesRoute = AuthenticatedStudyNotesRouteImport.update({
+  id: '/study-notes',
+  path: '/study-notes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedResourcesRoute = AuthenticatedResourcesRouteImport.update({
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/chat': typeof AuthenticatedChatRoute
   '/resources': typeof AuthenticatedResourcesRoute
+  '/study-notes': typeof AuthenticatedStudyNotesRoute
   '/tutor': typeof AuthenticatedTutorRoute
 }
 export interface FileRoutesByTo {
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/chat': typeof AuthenticatedChatRoute
   '/resources': typeof AuthenticatedResourcesRoute
+  '/study-notes': typeof AuthenticatedStudyNotesRoute
   '/tutor': typeof AuthenticatedTutorRoute
 }
 export interface FileRoutesById {
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/_authenticated/announcements': typeof AuthenticatedAnnouncementsRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/resources': typeof AuthenticatedResourcesRoute
+  '/_authenticated/study-notes': typeof AuthenticatedStudyNotesRoute
   '/_authenticated/tutor': typeof AuthenticatedTutorRoute
 }
 export interface FileRouteTypes {
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/chat'
     | '/resources'
+    | '/study-notes'
     | '/tutor'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/chat'
     | '/resources'
+    | '/study-notes'
     | '/tutor'
   id:
     | '__root__'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/_authenticated/announcements'
     | '/_authenticated/chat'
     | '/_authenticated/resources'
+    | '/_authenticated/study-notes'
     | '/_authenticated/tutor'
   fileRoutesById: FileRoutesById
 }
@@ -155,6 +167,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTutorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/study-notes': {
+      id: '/_authenticated/study-notes'
+      path: '/study-notes'
+      fullPath: '/study-notes'
+      preLoaderRoute: typeof AuthenticatedStudyNotesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/resources': {
       id: '/_authenticated/resources'
       path: '/resources'
@@ -191,6 +210,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnnouncementsRoute: typeof AuthenticatedAnnouncementsRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
+  AuthenticatedStudyNotesRoute: typeof AuthenticatedStudyNotesRoute
   AuthenticatedTutorRoute: typeof AuthenticatedTutorRoute
 }
 
@@ -199,6 +219,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnnouncementsRoute: AuthenticatedAnnouncementsRoute,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
+  AuthenticatedStudyNotesRoute: AuthenticatedStudyNotesRoute,
   AuthenticatedTutorRoute: AuthenticatedTutorRoute,
 }
 
