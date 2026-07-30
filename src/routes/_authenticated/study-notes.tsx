@@ -57,7 +57,7 @@ function Page() {
 
   const load = async () => {
     try {
-      setNotes((await fetchNotes({})) as Note[]);
+      setNotes((await fetchNotes({})) as unknown as Note[]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load notes");
     }
@@ -83,7 +83,7 @@ function Page() {
           ...(mode === "file" ? { resourceId } : { text: text.trim() }),
           ...(title.trim() ? { title: title.trim() } : {}),
         },
-      })) as Note;
+      })) as unknown as Note;
       setNotes((p) => [note, ...p]);
       setExpanded(note.id);
       setOpen(false);
