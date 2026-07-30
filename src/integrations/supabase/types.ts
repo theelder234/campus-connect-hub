@@ -245,6 +245,50 @@ export type Database = {
         }
         Relationships: []
       }
+      study_notes: {
+        Row: {
+          created_at: string
+          flashcards: Json
+          id: string
+          key_points: string[]
+          resource_id: string | null
+          source_type: string
+          summary: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          flashcards?: Json
+          id?: string
+          key_points?: string[]
+          resource_id?: string | null
+          source_type?: string
+          summary: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          flashcards?: Json
+          id?: string
+          key_points?: string[]
+          resource_id?: string | null
+          source_type?: string
+          summary?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_notes_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
