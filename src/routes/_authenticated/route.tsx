@@ -22,6 +22,9 @@ const nav = [
   { to: "/tutor", label: "AI Tutor", icon: Sparkles },
 ];
 
+const navItems = (isAdmin: boolean) =>
+  isAdmin ? [...nav, { to: "/admin", label: "Admin", icon: Shield }] : nav;
+
 function Shell() {
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
