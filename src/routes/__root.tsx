@@ -79,12 +79,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CampusLink — Smart Campus Interaction Platform" },
-      { name: "description", content: "Chat, share resources, and get AI-powered academic help — all in one connected campus platform." },
-      { property: "og:title", content: "CampusLink — Smart Campus Interaction Platform" },
-      { property: "og:description", content: "Real-time messaging, resource sharing, and an AI tutor for your university." },
+      { title: "CampusLink — Connect, Share, Learn" },
+      { name: "description", content: "A smart campus platform for real-time chat, resource sharing, and AI-powered academic support." },
+      { property: "og:title", content: "CampusLink — Connect, Share, Learn" },
+      { property: "og:description", content: "A smart campus platform for real-time chat, resource sharing, and AI-powered academic support." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "CampusLink — Connect, Share, Learn" },
+      { name: "twitter:description", content: "A smart campus platform for real-time chat, resource sharing, and AI-powered academic support." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/763971a9-32c2-4f0b-99bd-12659f9f8043" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/763971a9-32c2-4f0b-99bd-12659f9f8043" },
     ],
     links: [
       {
