@@ -5,10 +5,13 @@ import { z } from "zod";
 const RoleSchema = z.enum(["student", "faculty", "admin"]);
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
-  const { data, error } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
+  // Verified through the caller's own RLS-scoped session (users can read their own roles).
+  const { data, error } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId)
+    .eq("role", "admin")
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden: admin role required");
 }
@@ -19,7 +22,8 @@ export const adminStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { data: mine } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-    const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin").limit(1);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin").limit(1);
     return {
       roles: (mine ?? []).map((r: { role: string }) => r.role),
       isAdmin: (mine ?? []).some((r: { role: string }) => r.role === "admin"),
@@ -31,10 +35,10 @@ export const adminStatus = createServerFn({ method: "GET" })
 export const claimFirstAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin").limit(1);
-    if ((admins ?? []).length > 0) throw new Error("An admin already exists");
+    const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin").limit(1);
+    if ((admins ?? []).length > 0) throw new Error("An admin already exists");
     const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "admin" });
     if (error) throw new Error(error.message);
     return { ok: true };
