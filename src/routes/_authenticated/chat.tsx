@@ -71,14 +71,20 @@ function ChatPage() {
 
   const create = async () => {
     if (!newName.trim()) return;
-    const { data, error } = await supabase.from("channels").insert({
-      name: newName.trim(), description: newDesc.trim() || null, type: "group", created_by: userId,
-    }).select().single();
+    if (!userId) return toast.error("Not signed in");
+    // Generate the id client-side: the channels SELECT policy requires membership,
+    // so `.select()` right after insert would return no rows.
+    const id = crypto.randomUUID();
+    const { error } = await supabase.from("channels").insert({
+      id, name: newName.trim(), description: newDesc.trim() || null, type: "group", created_by: userId,
+    });
     if (error) return toast.error(error.message);
-    await supabase.from("channel_members").insert({ channel_id: data.id, user_id: userId });
+    const { error: memberError } = await supabase.from("channel_members").insert({ channel_id: id, user_id: userId });
+    if (memberError) return toast.error(memberError.message);
     setOpenNew(false); setNewName(""); setNewDesc("");
     await loadChannels();
-    setActiveId(data.id);
+    setActiveId(id);
+    toast.success("Channel created");
   };
 
   const join = async (id: string) => {
