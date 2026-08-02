@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, Download, FileText, Search } from "lucide-react";
+import { Upload, Download, FileText, Search, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/resources")({ component: Page, head: () => ({ meta: [{ title: "Resources — CampusLink" }] }) });
 
@@ -26,6 +26,7 @@ function Page() {
   const [userId, setUserId] = useState("");
   const [canOfficial, setCanOfficial] = useState(false);
   const [official, setOfficial] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -45,18 +46,27 @@ function Page() {
 
   const upload = async () => {
     if (!file || !title.trim()) return toast.error("Title and file required");
-    const path = `${userId}/${Date.now()}-${file.name}`;
-    const { error: upErr } = await supabase.storage.from("resources").upload(path, file);
-    if (upErr) return toast.error(upErr.message);
-    const { error } = await supabase.from("resources").insert({
-      title, description: desc || null, file_path: path, file_type: file.type,
-      course_code: course || null, tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-      is_official: official && canOfficial, uploaded_by: userId,
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Resource uploaded");
-    setOpen(false); setFile(null); setTitle(""); setDesc(""); setCourse(""); setTags(""); setOfficial(false);
-    load();
+    if (uploading) return;
+    setUploading(true);
+    const toastId = toast.loading(`Uploading ${file.name}…`);
+    try {
+      const path = `${userId}/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage
+        .from("resources")
+        .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: false });
+      if (upErr) return toast.error(upErr.message, { id: toastId });
+      const { error } = await supabase.from("resources").insert({
+        title, description: desc || null, file_path: path, file_type: file.type,
+        course_code: course || null, tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+        is_official: official && canOfficial, uploaded_by: userId,
+      });
+      if (error) return toast.error(error.message, { id: toastId });
+      toast.success("Resource uploaded", { id: toastId });
+      setOpen(false); setFile(null); setTitle(""); setDesc(""); setCourse(""); setTags(""); setOfficial(false);
+      load();
+    } finally {
+      setUploading(false);
+    }
   };
 
   const download = async (r: Res) => {
@@ -98,7 +108,12 @@ function Page() {
                 </label>
               )}
             </div>
-            <DialogFooter><Button onClick={upload}>Upload</Button></DialogFooter>
+            <DialogFooter>
+              <Button onClick={upload} disabled={uploading}>
+                {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                {uploading ? "Uploading…" : "Upload"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
