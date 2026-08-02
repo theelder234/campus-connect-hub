@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTutorRouteImport } from './routes/_authenticated/tutor'
 import { Route as AuthenticatedStudyNotesRouteImport } from './routes/_authenticated/study-notes'
 import { Route as AuthenticatedResourcesRouteImport } from './routes/_authenticated/resources'
+import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -48,6 +49,11 @@ const AuthenticatedResourcesRoute = AuthenticatedResourcesRouteImport.update({
   path: '/resources',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/chat': typeof AuthenticatedChatRoute
+  '/members': typeof AuthenticatedMembersRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/study-notes': typeof AuthenticatedStudyNotesRoute
   '/tutor': typeof AuthenticatedTutorRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/chat': typeof AuthenticatedChatRoute
+  '/members': typeof AuthenticatedMembersRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/study-notes': typeof AuthenticatedStudyNotesRoute
   '/tutor': typeof AuthenticatedTutorRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/announcements': typeof AuthenticatedAnnouncementsRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
+  '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/resources': typeof AuthenticatedResourcesRoute
   '/_authenticated/study-notes': typeof AuthenticatedStudyNotesRoute
   '/_authenticated/tutor': typeof AuthenticatedTutorRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/announcements'
     | '/chat'
+    | '/members'
     | '/resources'
     | '/study-notes'
     | '/tutor'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/announcements'
     | '/chat'
+    | '/members'
     | '/resources'
     | '/study-notes'
     | '/tutor'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/announcements'
     | '/_authenticated/chat'
+    | '/_authenticated/members'
     | '/_authenticated/resources'
     | '/_authenticated/study-notes'
     | '/_authenticated/tutor'
@@ -181,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedResourcesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/members': {
+      id: '/_authenticated/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof AuthenticatedMembersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/chat': {
       id: '/_authenticated/chat'
       path: '/chat'
@@ -209,6 +228,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedAnnouncementsRoute: typeof AuthenticatedAnnouncementsRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
+  AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
   AuthenticatedStudyNotesRoute: typeof AuthenticatedStudyNotesRoute
   AuthenticatedTutorRoute: typeof AuthenticatedTutorRoute
@@ -218,6 +238,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedAnnouncementsRoute: AuthenticatedAnnouncementsRoute,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
+  AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
   AuthenticatedStudyNotesRoute: AuthenticatedStudyNotesRoute,
   AuthenticatedTutorRoute: AuthenticatedTutorRoute,
