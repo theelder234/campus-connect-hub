@@ -69,10 +69,10 @@ function Shell() {
         </div>
       </aside>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center gap-1 border-b p-2 md:hidden">
+        <div className="flex items-center gap-1 overflow-x-auto border-b p-2 md:hidden">
           {navItems(isAdmin).map((n) => (
             <Link key={n.to} to={n.to} className={cn(
-              "flex-1 rounded-md p-2 text-center text-xs",
+              "min-w-[64px] flex-1 shrink-0 rounded-md p-2 text-center text-[11px]",
               path.startsWith(n.to) ? "bg-accent font-medium" : "text-muted-foreground"
             )}>
               <n.icon className="mx-auto h-4 w-4" />
