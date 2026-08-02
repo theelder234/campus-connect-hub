@@ -104,11 +104,14 @@ function ChatPage() {
     setMemberOf((m) => [...m, id]);
   };
 
+  const newChannelButton = (
+    <Button size="icon" variant="ghost" aria-label="New channel" onClick={() => { setMobileOpen(false); setOpenNew(true); }}>
+      <Plus className="h-4 w-4" />
+    </Button>
+  );
+
   const newChannelDialog = (
     <Dialog open={openNew} onOpenChange={setOpenNew}>
-      <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" aria-label="New channel"><Plus className="h-4 w-4" /></Button>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>New channel</DialogTitle></DialogHeader>
         <div className="space-y-3">
@@ -136,10 +139,11 @@ function ChatPage() {
 
   return (
     <div className="flex h-full">
+      {newChannelDialog}
       <div className="hidden w-64 shrink-0 flex-col border-r bg-muted/30 md:flex">
         <div className="flex items-center justify-between p-3">
           <div className="text-sm font-semibold">Channels</div>
-          {newChannelDialog}
+          {newChannelButton}
         </div>
         <ScrollArea className="flex-1">{channelList}</ScrollArea>
       </div>
@@ -154,7 +158,7 @@ function ChatPage() {
             <SheetContent side="left" className="w-72 p-0">
               <SheetHeader className="flex-row items-center justify-between space-y-0 p-3">
                 <SheetTitle className="text-sm">Channels</SheetTitle>
-                {newChannelDialog}
+                {newChannelButton}
               </SheetHeader>
               <ScrollArea className="h-[calc(100vh-4rem)]">{channelList}</ScrollArea>
             </SheetContent>
@@ -162,7 +166,7 @@ function ChatPage() {
           <div className="min-w-0 flex-1 truncate text-sm font-medium">
             {channels.find((c) => c.id === activeId)?.name ?? "Select a channel"}
           </div>
-          <div className="md:hidden">{newChannelDialog}</div>
+          <div className="md:hidden">{newChannelButton}</div>
         </div>
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-3">
