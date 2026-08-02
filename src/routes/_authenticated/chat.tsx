@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Send, Hash } from "lucide-react";
+import { Plus, Send, Hash, Menu } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/chat")({ component: ChatPage, head: () => ({ meta: [{ title: "Chat — CampusLink" }] }) });
 
@@ -17,6 +18,8 @@ type Msg = { id: string; content: string; user_id: string; created_at: string };
 function ChatPage() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [memberOf, setMemberOf] = useState<string[]>([]);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [profiles, setProfiles] = useState<Record<string, string>>({});
@@ -35,6 +38,11 @@ function ChatPage() {
     const { data } = await supabase.from("channels").select("*").order("created_at", { ascending: true });
     setChannels((data as Channel[]) ?? []);
     if (!activeId && data && data.length) setActiveId(data[0].id);
+    const { data: u } = await supabase.auth.getUser();
+    if (u.user) {
+      const { data: mem } = await supabase.from("channel_members").select("channel_id").eq("user_id", u.user.id);
+      setMemberOf((mem ?? []).map((m) => m.channel_id));
+    }
   };
 
   useEffect(() => {
@@ -88,43 +96,77 @@ function ChatPage() {
   };
 
   const join = async (id: string) => {
-    await supabase.from("channel_members").insert({ channel_id: id, user_id: userId });
     setActiveId(id);
-    loadChannels();
+    setMobileOpen(false);
+    if (!userId || memberOf.includes(id)) return;
+    const { error } = await supabase.from("channel_members").insert({ channel_id: id, user_id: userId });
+    if (error) return toast.error(error.message);
+    setMemberOf((m) => [...m, id]);
   };
+
+  const newChannelButton = (
+    <Button size="icon" variant="ghost" aria-label="New channel" onClick={() => { setMobileOpen(false); setOpenNew(true); }}>
+      <Plus className="h-4 w-4" />
+    </Button>
+  );
+
+  const newChannelDialog = (
+    <Dialog open={openNew} onOpenChange={setOpenNew}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>New channel</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Name</Label><Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="cs101-study-group" /></div>
+          <div><Label>Description</Label><Input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} /></div>
+        </div>
+        <DialogFooter><Button onClick={create}>Create</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const channelList = (
+    <div className="space-y-0.5 p-2">
+      {channels.map((c) => (
+        <button key={c.id} onClick={() => join(c.id)}
+          className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent ${activeId === c.id ? "bg-accent font-medium" : ""}`}>
+          <Hash className="h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{c.name}</span>
+          {!memberOf.includes(c.id) && <span className="shrink-0 text-[10px] text-muted-foreground">join</span>}
+        </button>
+      ))}
+      {!channels.length && <div className="p-3 text-xs text-muted-foreground">No channels yet — create one.</div>}
+    </div>
+  );
 
   return (
     <div className="flex h-full">
+      {newChannelDialog}
       <div className="hidden w-64 shrink-0 flex-col border-r bg-muted/30 md:flex">
         <div className="flex items-center justify-between p-3">
           <div className="text-sm font-semibold">Channels</div>
-          <Dialog open={openNew} onOpenChange={setOpenNew}>
-            <DialogTrigger asChild><Button size="icon" variant="ghost"><Plus className="h-4 w-4" /></Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>New channel</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>Name</Label><Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="cs101-study-group" /></div>
-                <div><Label>Description</Label><Input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} /></div>
-              </div>
-              <DialogFooter><Button onClick={create}>Create</Button></DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {newChannelButton}
         </div>
-        <ScrollArea className="flex-1">
-          <div className="space-y-0.5 p-2">
-            {channels.map((c) => (
-              <button key={c.id} onClick={() => join(c.id)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent ${activeId === c.id ? "bg-accent font-medium" : ""}`}>
-                <Hash className="h-3.5 w-3.5" />{c.name}
-              </button>
-            ))}
-            {!channels.length && <div className="p-3 text-xs text-muted-foreground">No channels yet — create one.</div>}
-          </div>
-        </ScrollArea>
+        <ScrollArea className="flex-1">{channelList}</ScrollArea>
       </div>
       <div className="flex flex-1 flex-col">
-        <div className="border-b p-3 text-sm font-medium">
-          {channels.find((c) => c.id === activeId)?.name ?? "Select a channel"}
+        <div className="flex items-center gap-2 border-b p-2 md:p-3">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="ghost" className="md:hidden" aria-label="Browse channels">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetHeader className="flex-row items-center justify-between space-y-0 p-3">
+                <SheetTitle className="text-sm">Channels</SheetTitle>
+                {newChannelButton}
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-4rem)]">{channelList}</ScrollArea>
+            </SheetContent>
+          </Sheet>
+          <div className="min-w-0 flex-1 truncate text-sm font-medium">
+            {channels.find((c) => c.id === activeId)?.name ?? "Select a channel"}
+          </div>
+          <div className="md:hidden">{newChannelButton}</div>
         </div>
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-3">

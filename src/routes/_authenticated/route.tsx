@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { MessageSquare, Megaphone, FolderOpen, Sparkles, LogOut, Shield, NotebookPen } from "lucide-react";
+import { MessageSquare, Megaphone, FolderOpen, Sparkles, LogOut, Shield, NotebookPen, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/_authenticated")({
 
 const nav = [
   { to: "/chat", label: "Chat", icon: MessageSquare },
+  { to: "/members", label: "Members", icon: Users },
   { to: "/announcements", label: "Announcements", icon: Megaphone },
   { to: "/resources", label: "Resources", icon: FolderOpen },
   { to: "/study-notes", label: "Study Notes", icon: NotebookPen },
@@ -68,10 +69,10 @@ function Shell() {
         </div>
       </aside>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center gap-1 border-b p-2 md:hidden">
+        <div className="flex items-center gap-1 overflow-x-auto border-b p-2 md:hidden">
           {navItems(isAdmin).map((n) => (
             <Link key={n.to} to={n.to} className={cn(
-              "flex-1 rounded-md p-2 text-center text-xs",
+              "min-w-[64px] flex-1 shrink-0 rounded-md p-2 text-center text-[11px]",
               path.startsWith(n.to) ? "bg-accent font-medium" : "text-muted-foreground"
             )}>
               <n.icon className="mx-auto h-4 w-4" />
