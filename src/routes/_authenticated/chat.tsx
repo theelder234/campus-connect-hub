@@ -8,11 +8,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Send, Hash, Menu } from "lucide-react";
+import { Plus, Send, Hash, Menu, LogOut, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/chat")({ component: ChatPage, head: () => ({ meta: [{ title: "Chat — CampusLink" }] }) });
 
-type Channel = { id: string; name: string; description: string | null; type: string };
+type Channel = { id: string; name: string; description: string | null; type: string; created_by: string | null };
 type Msg = { id: string; content: string; user_id: string; created_at: string };
 
 function ChatPage() {
@@ -27,10 +27,16 @@ function ChatPage() {
   const [openNew, setOpenNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ""));
+    supabase.auth.getUser().then(async ({ data }) => {
+      setUserId(data.user?.id ?? "");
+      if (!data.user) return;
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+      setIsAdmin(!!roles?.some((r) => r.role === "admin"));
+    });
     loadChannels();
   }, []);
 
@@ -104,6 +110,28 @@ function ChatPage() {
     setMemberOf((m) => [...m, id]);
   };
 
+  const leave = async (id: string) => {
+    const { error } = await supabase
+      .from("channel_members")
+      .delete()
+      .eq("channel_id", id)
+      .eq("user_id", userId);
+    if (error) return toast.error(error.message);
+    setMemberOf((m) => m.filter((x) => x !== id));
+    setMessages([]);
+    toast.success("Left the group");
+  };
+
+  const removeChannel = async (id: string) => {
+    if (!confirm("Delete this group and all of its messages?")) return;
+    const { error } = await supabase.from("channels").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    setChannels((c) => c.filter((x) => x.id !== id));
+    setMemberOf((m) => m.filter((x) => x !== id));
+    if (activeId === id) { setActiveId(null); setMessages([]); }
+    toast.success("Group deleted");
+  };
+
   const newChannelButton = (
     <Button size="icon" variant="ghost" aria-label="New channel" onClick={() => { setMobileOpen(false); setOpenNew(true); }}>
       <Plus className="h-4 w-4" />
@@ -137,6 +165,10 @@ function ChatPage() {
     </div>
   );
 
+  const active = channels.find((c) => c.id === activeId) ?? null;
+  const isMember = !!activeId && memberOf.includes(activeId);
+  const canDelete = !!active && (active.created_by === userId || isAdmin);
+
   return (
     <div className="flex h-full">
       {newChannelDialog}
@@ -164,8 +196,22 @@ function ChatPage() {
             </SheetContent>
           </Sheet>
           <div className="min-w-0 flex-1 truncate text-sm font-medium">
-            {channels.find((c) => c.id === activeId)?.name ?? "Select a channel"}
+            {active?.name ?? "Select a channel"}
           </div>
+          {active && isMember && (
+            <Button size="sm" variant="ghost" onClick={() => leave(active.id)} aria-label="Leave group">
+              <LogOut className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Leave</span>
+            </Button>
+          )}
+          {active && !isMember && (
+            <Button size="sm" variant="outline" onClick={() => join(active.id)}>Join</Button>
+          )}
+          {canDelete && (
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeChannel(active!.id)} aria-label="Delete group">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
           <div className="md:hidden">{newChannelButton}</div>
         </div>
         <ScrollArea className="flex-1 p-4">
@@ -182,8 +228,8 @@ function ChatPage() {
           </div>
         </ScrollArea>
         <form onSubmit={send} className="flex gap-2 border-t p-3">
-          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={activeId ? "Message" : "Join or create a channel"} disabled={!activeId} />
-          <Button type="submit" disabled={!activeId || !text.trim()}><Send className="h-4 w-4" /></Button>
+          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={!activeId ? "Join or create a channel" : isMember ? "Message" : "Join this group to chat"} disabled={!activeId || !isMember} />
+          <Button type="submit" disabled={!activeId || !isMember || !text.trim()}><Send className="h-4 w-4" /></Button>
         </form>
       </div>
     </div>
