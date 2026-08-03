@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/announcements")({ component: Page, head: () => ({ meta: [{ title: "Announcements — CampusLink" }] }) });
 
@@ -14,7 +15,7 @@ type Ann = { id: string; title: string; body: string; priority: string; author_i
 
 function Page() {
   const [items, setItems] = useState<Ann[]>([]);
-  const [canPost, setCanPost] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [priority, setPriority] = useState("normal");
@@ -26,7 +27,7 @@ function Page() {
       if (!u.user) return;
       setUserId(u.user.id);
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-      setCanPost(!!roles?.some((r) => r.role === "faculty" || r.role === "admin"));
+      setIsAdmin(!!roles?.some((r) => r.role === "admin"));
     })();
     load();
     const ch = supabase.channel("announcements")
@@ -48,10 +49,16 @@ function Page() {
     setTitle(""); setBody(""); toast.success("Announcement posted");
   };
 
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    setItems((x) => x.filter((a) => a.id !== id));
+    toast.success("Announcement removed");
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <h1 className="text-2xl font-semibold">Campus Announcements</h1>
-      {canPost && (
         <Card>
           <CardHeader><CardTitle className="text-base">Broadcast an update</CardTitle></CardHeader>
           <CardContent>
@@ -67,16 +74,19 @@ function Page() {
             </form>
           </CardContent>
         </Card>
-      )}
-      {!canPost && (
-        <p className="text-sm text-muted-foreground">Only faculty and administrators can post announcements.</p>
-      )}
       <div className="space-y-3">
         {items.map((a) => (
           <Card key={a.id}>
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
               <CardTitle className="text-base">{a.title}</CardTitle>
-              {a.priority === "urgent" && <Badge variant="destructive">Urgent</Badge>}
+              <div className="flex shrink-0 items-center gap-2">
+                {a.priority === "urgent" && <Badge variant="destructive">Urgent</Badge>}
+                {(a.author_id === userId || isAdmin) && (
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" aria-label="Delete announcement" onClick={() => remove(a.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap text-sm">{a.body}</p>
