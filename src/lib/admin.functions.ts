@@ -97,3 +97,66 @@ export const setUserRole = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/** Platform-wide counts + 14-day activity series for the admin dashboard. */
+export const adminStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const count = async (table: string) => {
+      const { count: c } = await supabaseAdmin.from(table as never).select("*", { count: "exact", head: true });
+      return c ?? 0;
+    };
+
+    const [users, channels, messages, announcements, resources, notes] = await Promise.all([
+      count("profiles"),
+      count("channels"),
+      count("messages"),
+      count("announcements"),
+      count("resources"),
+      count("study_notes"),
+    ]);
+
+    const { data: roles } = await supabaseAdmin.from("user_roles").select("role");
+    const roleCounts = { student: 0, faculty: 0, admin: 0 } as Record<string, number>;
+    for (const r of roles ?? []) roleCounts[r.role as string] = (roleCounts[r.role as string] ?? 0) + 1;
+
+    const since = new Date(Date.now() - 13 * 86400000);
+    since.setHours(0, 0, 0, 0);
+    const iso = since.toISOString();
+
+    const [{ data: msgRows }, { data: userRows }] = await Promise.all([
+      supabaseAdmin.from("messages").select("created_at").gte("created_at", iso),
+      supabaseAdmin.from("profiles").select("created_at").gte("created_at", iso),
+    ]);
+
+    const days: { day: string; messages: number; signups: number }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(since.getTime() + i * 86400000);
+      days.push({ day: d.toISOString().slice(5, 10), messages: 0, signups: 0 });
+    }
+    const bump = (list: { created_at: string }[] | null, key: "messages" | "signups") => {
+      for (const row of list ?? []) {
+        const label = new Date(row.created_at).toISOString().slice(5, 10);
+        const hit = days.find((d) => d.day === label);
+        if (hit) hit[key] += 1;
+      }
+    };
+    bump(msgRows as { created_at: string }[] | null, "messages");
+    bump(userRows as { created_at: string }[] | null, "signups");
+
+    const { data: topChannels } = await supabaseAdmin
+      .from("channels")
+      .select("id, name, created_at")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    return {
+      totals: { users, channels, messages, announcements, resources, notes },
+      roleCounts,
+      series: days,
+      recentChannels: (topChannels ?? []) as { id: string; name: string; created_at: string }[],
+    };
+  });
