@@ -20,6 +20,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -38,13 +39,19 @@ function AuthPage() {
   const signUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { emailRedirectTo: window.location.origin, data: { full_name: name } },
     });
     setLoading(false);
     if (error) return toast.error(error.message);
-    toast.success("Account created. You can sign in now.");
+    if (data.session) {
+      toast.success("Account created.");
+      navigate({ to: "/chat" });
+      return;
+    }
+    setPendingEmail(email);
+    toast.success("Confirmation email sent — check your inbox to activate your account.");
   };
   const google = async () => {
     const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
@@ -76,12 +83,40 @@ function AuthPage() {
               </form>
             </TabsContent>
             <TabsContent value="up">
+              {pendingEmail ? (
+                <div className="space-y-3 pt-4 text-center">
+                  <h3 className="text-base font-semibold">Check your email</h3>
+                  <p className="text-sm text-muted-foreground">
+                    We sent a confirmation link to <span className="font-medium text-foreground">{pendingEmail}</span>.
+                    Click it to activate your CampusLink account, then sign in.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={loading}
+                    onClick={async () => {
+                      setLoading(true);
+                      const { error } = await supabase.auth.resend({
+                        type: "signup",
+                        email: pendingEmail,
+                        options: { emailRedirectTo: window.location.origin },
+                      });
+                      setLoading(false);
+                      if (error) return toast.error(error.message);
+                      toast.success("Confirmation email resent.");
+                    }}
+                  >
+                    Resend confirmation email
+                  </Button>
+                </div>
+              ) : (
               <form onSubmit={signUp} className="space-y-3 pt-4">
                 <div><Label>Full name</Label><Input value={name} onChange={(e) => setName(e.target.value)} required /></div>
                 <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
                 <div><Label>Password</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div>
                 <Button className="w-full" disabled={loading}>{loading ? "…" : "Create account"}</Button>
               </form>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
