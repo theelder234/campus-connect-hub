@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { sendSignupConfirmation } from "@/lib/mail.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,7 @@ function AuthPage() {
       return;
     }
     setPendingEmail(email);
+    await sendSignupConfirmation({ data: { email, redirectTo: window.location.origin } });
     toast.success("Confirmation email sent — check your inbox to activate your account.");
   };
   const google = async () => {
@@ -96,13 +98,11 @@ function AuthPage() {
                     disabled={loading}
                     onClick={async () => {
                       setLoading(true);
-                      const { error } = await supabase.auth.resend({
-                        type: "signup",
-                        email: pendingEmail,
-                        options: { emailRedirectTo: window.location.origin },
+                      const { sent } = await sendSignupConfirmation({
+                        data: { email: pendingEmail, redirectTo: window.location.origin },
                       });
                       setLoading(false);
-                      if (error) return toast.error(error.message);
+                      if (!sent) return toast.error("Could not send the email. Try again shortly.");
                       toast.success("Confirmation email resent.");
                     }}
                   >
