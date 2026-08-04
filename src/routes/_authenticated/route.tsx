@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MessageSquare, Megaphone, FolderOpen, Sparkles, LogOut, Shield, NotebookPen, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { sendWelcomeEmail } from "@/lib/mail.functions";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -38,6 +39,8 @@ function Shell() {
       if (!data.user) return;
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
       setIsAdmin(!!roles?.some((r) => r.role === "admin"));
+      // Fires once per account; the server no-ops if it was already sent.
+      sendWelcomeEmail({ data: { appUrl: window.location.origin } }).catch(() => {});
     });
   }, []);
   const signOut = async () => {
