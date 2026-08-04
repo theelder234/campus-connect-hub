@@ -189,6 +189,7 @@ export type Database = {
           department: string | null
           full_name: string | null
           id: string
+          welcome_email_sent: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -196,6 +197,7 @@ export type Database = {
           department?: string | null
           full_name?: string | null
           id: string
+          welcome_email_sent?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -203,6 +205,7 @@ export type Database = {
           department?: string | null
           full_name?: string | null
           id?: string
+          welcome_email_sent?: boolean
         }
         Relationships: []
       }
