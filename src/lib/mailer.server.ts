@@ -63,3 +63,33 @@ export async function sendWelcomeMail(to: string, name: string, appUrl: string) 
     ),
   );
 }
+
+export async function sendOtpMail(to: string, code: string) {
+  await sendMail(
+    to,
+    `${code} is your CampusLink verification code`,
+    shell(
+      "Verify your email",
+      `<p style="line-height:1.6">Enter this code in CampusLink to activate your account:</p>
+       <p style="margin:24px 0;font-size:34px;font-weight:800;letter-spacing:10px;background:#f3f4f6;border-radius:10px;padding:16px;text-align:center">${code}</p>
+       <p style="font-size:12px;color:#6b7280">The code expires in 10 minutes. If you didn't sign up, ignore this message.</p>`,
+    ),
+  );
+}
+
+async function unusedWelcome(to: string, name: string, appUrl: string) {
+  await sendMail(
+    to,
+    "Welcome to CampusLink 🎓",
+    shell(
+      `Welcome, ${name}!`,
+      `<p style="line-height:1.6">Your CampusLink account is ready. Here's what you can do:</p>
+       <ul style="line-height:1.8;padding-left:18px">
+         <li>Chat in real time with classmates and lecturers</li>
+         <li>Share and find course resources</li>
+         <li>Turn PDFs into study notes and flashcards</li>
+         <li>Ask the 24/7 Socratic AI tutor</li>
+       </ul>${button(appUrl, "Open CampusLink")}`,
+    ),
+  );
+}
