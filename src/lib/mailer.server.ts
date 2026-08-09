@@ -76,20 +76,3 @@ export async function sendOtpMail(to: string, code: string) {
     ),
   );
 }
-
-async function unusedWelcome(to: string, name: string, appUrl: string) {
-  await sendMail(
-    to,
-    "Welcome to CampusLink 🎓",
-    shell(
-      `Welcome, ${name}!`,
-      `<p style="line-height:1.6">Your CampusLink account is ready. Here's what you can do:</p>
-       <ul style="line-height:1.8;padding-left:18px">
-         <li>Chat in real time with classmates and lecturers</li>
-         <li>Share and find course resources</li>
-         <li>Turn PDFs into study notes and flashcards</li>
-         <li>Ask the 24/7 Socratic AI tutor</li>
-       </ul>${button(appUrl, "Open CampusLink")}`,
-    ),
-  );
-}
