@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { sendSignupConfirmation } from "@/lib/mail.functions";
+import { sendSignupOtp, verifySignupOtp } from "@/lib/mail.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [code, setCode] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -52,8 +53,28 @@ function AuthPage() {
       return;
     }
     setPendingEmail(email);
-    await sendSignupConfirmation({ data: { email, redirectTo: window.location.origin } });
-    toast.success("Confirmation email sent — check your inbox to activate your account.");
+    await sendSignupOtp({ data: { email } });
+    toast.success("We sent a 6-digit code to your email.");
+  };
+  const verify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingEmail) return;
+    setLoading(true);
+    try {
+      await verifySignupOtp({ data: { email: pendingEmail, code } });
+      const { error } = await supabase.auth.signInWithPassword({ email: pendingEmail, password });
+      if (error) {
+        toast.success("Email verified — please sign in.");
+        setPendingEmail(null);
+        return;
+      }
+      toast.success("Account verified. Welcome to CampusLink!");
+      navigate({ to: "/chat" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setLoading(false);
+    }
   };
   const google = async () => {
     const res = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
@@ -86,29 +107,41 @@ function AuthPage() {
             </TabsContent>
             <TabsContent value="up">
               {pendingEmail ? (
-                <div className="space-y-3 pt-4 text-center">
-                  <h3 className="text-base font-semibold">Check your email</h3>
+                <form onSubmit={verify} className="space-y-3 pt-4 text-center">
+                  <h3 className="text-base font-semibold">Enter your code</h3>
                   <p className="text-sm text-muted-foreground">
-                    We sent a confirmation link to <span className="font-medium text-foreground">{pendingEmail}</span>.
-                    Click it to activate your CampusLink account, then sign in.
+                    We sent a 6-digit verification code to{" "}
+                    <span className="font-medium text-foreground">{pendingEmail}</span>.
                   </p>
+                  <Input
+                    inputMode="numeric"
+                    autoFocus
+                    maxLength={6}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="123456"
+                    className="text-center text-2xl tracking-[0.5em]"
+                    required
+                  />
+                  <Button className="w-full" disabled={loading || code.length !== 6}>
+                    {loading ? "…" : "Verify and continue"}
+                  </Button>
                   <Button
+                    type="button"
                     variant="outline"
                     className="w-full"
                     disabled={loading}
                     onClick={async () => {
                       setLoading(true);
-                      const { sent } = await sendSignupConfirmation({
-                        data: { email: pendingEmail, redirectTo: window.location.origin },
-                      });
+                      const { sent } = await sendSignupOtp({ data: { email: pendingEmail } });
                       setLoading(false);
                       if (!sent) return toast.error("Could not send the email. Try again shortly.");
-                      toast.success("Confirmation email resent.");
+                      toast.success("New code sent.");
                     }}
                   >
-                    Resend confirmation email
+                    Resend code
                   </Button>
-                </div>
+                </form>
               ) : (
               <form onSubmit={signUp} className="space-y-3 pt-4">
                 <div><Label>Full name</Label><Input value={name} onChange={(e) => setName(e.target.value)} required /></div>
