@@ -40,7 +40,7 @@ function Shell() {
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
       setIsAdmin(!!roles?.some((r) => r.role === "admin"));
       // Fires once per account; the server no-ops if it was already sent.
-      sendWelcomeEmail({ data: { appUrl: window.location.origin } }).catch(() => {});
+      sendWelcomeEmail({ data: { appUrl: "https://campus-networkk.lovable.app" } }).catch(() => {});
     });
   }, []);
   const signOut = async () => {

@@ -28,6 +28,34 @@ Powered by Lovable Cloud (database, auth, storage, and AI):
 - Private `resources` storage bucket
 - AI features run server-side through the Lovable AI Gateway — no API keys in the browser
 
+## Live site
+
+https://campus-networkk.lovable.app — all outgoing emails now link to this URL (the old
+`campusLink.mau.edu.ng` address has been removed from templates and the default sender).
+
+## Authentication
+
+### Email + password
+Signup sends a 6-digit OTP by email (nodemailer over SMTP). Entering the code confirms the
+account and signs the user straight in. A one-time welcome email follows, linking to
+https://campus-networkk.lovable.app.
+
+### Google sign-in — verified working
+Google uses the managed Lovable OAuth broker (`lovable.auth.signInWithOAuth("google")`),
+not a direct Supabase provider call. Tested against the published site:
+
+| Step | Result |
+| --- | --- |
+| `GET https://campus-networkk.lovable.app/auth` | `200` — sign-in page with "Continue with Google" |
+| `GET /~oauth/initiate?provider=google` | `302` → `oauth.lovable.app/initiate` |
+| broker initiate | `302` → `accounts.google.com/o/oauth2/v2/auth` (PKCE `S256`, scope `openid email profile`) |
+
+So the Google flow reaches Google's consent screen and returns to the app, where the session
+is set and the welcome email is sent. Note: calling the Supabase
+`/auth/v1/authorize?provider=google` endpoint directly returns
+`Unsupported provider: missing OAuth secret` — that is expected, because credentials live with
+the broker, not the Supabase project.
+
 ## Build with Lovable
 
 Open your project in the [Lovable editor](https://lovable.dev) and keep building.
