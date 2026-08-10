@@ -22,7 +22,7 @@ function shell(title: string, body: string) {
     <div style="font-size:18px;font-weight:700;margin-bottom:16px">CampusLink</div>
     <h1 style="font-size:20px;margin:0 0 12px">${title}</h1>
     ${body}
-    <p style="margin-top:28px;font-size:12px;color:#6b7280">Sent by CampusLink · campusLink.mau.edu.ng</p>
+    <p style="margin-top:28px;font-size:12px;color:#6b7280">Sent by CampusLink · <a href="https://campus-networkk.lovable.app" style="color:#4338ca;text-decoration:none">campus-networkk.lovable.app</a></p>
   </div></body></html>`;
 }
 
@@ -32,7 +32,7 @@ function button(href: string, label: string) {
 }
 
 export async function sendMail(to: string, subject: string, html: string) {
-  const from = process.env["SMTP_FROM"] ?? "CampusLink <no-reply@campuslink.mau.edu.ng>";
+  const from = process.env["SMTP_FROM"] ?? "CampusLink <no-reply@campus-networkk.lovable.app>";
   await transporter().sendMail({ from, to, subject, html });
 }
 
