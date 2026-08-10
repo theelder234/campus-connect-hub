@@ -56,6 +56,30 @@ is set and the welcome email is sent. Note: calling the Supabase
 `Unsupported provider: missing OAuth secret` — that is expected, because credentials live with
 the broker, not the Supabase project.
 
+### Welcome emails for Google (and any missed) signups
+
+Google users never enter the OTP flow, so a **watcher endpoint** backs up the in-app trigger:
+
+`GET|POST /api/public/welcome-sweep` — finds up to 50 profiles with `welcome_email_sent = false`,
+resolves each address through the auth admin API, sends the branded welcome email via nodemailer,
+and flips the flag. Idempotent, so it can run on a schedule.
+
+Auth: `Authorization: Bearer $WELCOME_SWEEP_SECRET` (or `?token=`). The secret is stored in the
+backend environment; requests without it get `401`.
+
+Tested:
+
+| Call | Result |
+| --- | --- |
+| no token | `401 Unauthorized` |
+| with token, 3 pending accounts | `{"checked":3,"sent":3,"failed":0}` — emails accepted by Gmail SMTP |
+| immediate re-run | `{"checked":0,"sent":0,"failed":0}` — no duplicates |
+
+Schedule it (e.g. every 15 minutes) against the stable URL
+`https://project--92757af2-6a20-40fa-b6b3-a431754e3b94.lovable.app/api/public/welcome-sweep`.
+Caveat unchanged: raw SMTP works in preview/dev; the published edge runtime may block the socket,
+in which case only the transport needs swapping for an HTTP email API.
+
 ## Build with Lovable
 
 Open your project in the [Lovable editor](https://lovable.dev) and keep building.

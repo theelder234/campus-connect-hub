@@ -20,6 +20,7 @@ import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as ApiPublicWelcomeSweepRouteImport } from './routes/api/public/welcome-sweep'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin/analytics'
 
@@ -78,6 +79,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
+const ApiPublicWelcomeSweepRoute = ApiPublicWelcomeSweepRouteImport.update({
+  id: '/api/public/welcome-sweep',
+  path: '/api/public/welcome-sweep',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/tutor': typeof AuthenticatedTutorRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/welcome-sweep': typeof ApiPublicWelcomeSweepRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/tutor': typeof AuthenticatedTutorRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/welcome-sweep': typeof ApiPublicWelcomeSweepRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/_authenticated/tutor': typeof AuthenticatedTutorRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/api/public/welcome-sweep': typeof ApiPublicWelcomeSweepRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/tutor'
     | '/admin/analytics'
     | '/admin/users'
+    | '/api/public/welcome-sweep'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/tutor'
     | '/admin/analytics'
     | '/admin/users'
+    | '/api/public/welcome-sweep'
     | '/admin'
   id:
     | '__root__'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tutor'
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/users'
+    | '/api/public/welcome-sweep'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicWelcomeSweepRoute: typeof ApiPublicWelcomeSweepRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -263,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/api/public/welcome-sweep': {
+      id: '/api/public/welcome-sweep'
+      path: '/api/public/welcome-sweep'
+      fullPath: '/api/public/welcome-sweep'
+      preLoaderRoute: typeof ApiPublicWelcomeSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -325,6 +345,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicWelcomeSweepRoute: ApiPublicWelcomeSweepRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
