@@ -70,9 +70,9 @@ function Landing() {
       </main>
 
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <p className="font-semibold text-foreground">David Mani Ibrahim</p>
-        <p className="mt-1">Matric No: Not provided</p>
-        <p className="mt-2">Campus WiFi • Student access and community portal</p>
+        <p className="font-semibold text-foreground">Name: Francis </p>
+        <p className="mt-1">Matric No: CSC/19U/20U/3611 </p>
+      
       </footer>
     </div>
   );
