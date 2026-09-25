@@ -70,7 +70,7 @@ function Landing() {
       </main>
 
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <p className="font-semibold text-foreground">Name: Francis </p>
+        <p className="font-semibold text-foreground">Name: Francis Chinedu Ezugu</p>
         <p className="mt-1">Matric No: CSC/19U/20U/3611 </p>
       
       </footer>
