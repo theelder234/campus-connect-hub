@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
 import { MessageSquare, FolderOpen, Sparkles, Megaphone } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -38,6 +39,7 @@ function Landing() {
             <Link to="/chat"><Button size="lg" variant="outline">Enter the app</Button></Link>
           </div>
         </section>
+
         <section className="mt-24 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: MessageSquare, title: "Real-time chat", body: "Direct messages, study groups, and course channels powered by realtime." },
@@ -52,7 +54,26 @@ function Landing() {
             </div>
           ))}
         </section>
+
+        <section className="mt-24 rounded-2xl border bg-card p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">Community hub</p>
+              <h2 className="mt-1 text-2xl font-black">Connect, share and collaborate</h2>
+              <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                Join the campus group chat, distribute study materials, and keep everyone aligned in one place.
+              </p>
+            </div>
+            <Link to="/group-chat"><Button size="lg">Open community chat</Button></Link>
+          </div>
+        </section>
       </main>
+
+      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
+        <p className="font-semibold text-foreground">David Mani Ibrahim</p>
+        <p className="mt-1">Matric No: Not provided</p>
+        <p className="mt-2">Campus WiFi • Student access and community portal</p>
+      </footer>
     </div>
   );
 }
