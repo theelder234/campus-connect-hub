@@ -1,17 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { buildAttachmentParts, type TutorAttachment } from "./tutor-files.server";
+import { streamResponsesText } from "./responses.server";
 
 const SYSTEM = `You are CampusLink AI Tutor, a helpful Socratic academic assistant for university students.
 Guide students toward the answer step-by-step rather than just giving it away.
 Ask a clarifying question when needed. Explain concepts clearly with examples.
 If the student asks for a full solution, offer a brief hint first, then reveal the solution only if they insist.
+When the student attaches files (past question papers, lecture notes, photos of problems), read them carefully and base your answer on their content; refer to specific questions or sections by number.
 Cite key formulas or definitions when helpful. Keep responses focused and encouraging.`;
+
+const MODEL = "openai/gpt-6-astra";
+
+const Attachment = z.object({
+  path: z.string().min(3).max(400),
+  name: z.string().min(1).max(200),
+  type: z.string().max(200),
+  size: z.number().int().nonnegative(),
+});
 
 const Input = z.object({
   conversationId: z.string().uuid().optional(),
-  message: z.string().min(1).max(4000),
-});
+  message: z.string().max(4000),
+  attachments: z.array(Attachment).max(3).default([]),
+}).refine((v) => v.message.trim().length > 0 || v.attachments.length > 0, { message: "Write a message or attach a file" });
 
 export const tutorSend = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -21,39 +34,55 @@ export const tutorSend = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
+    // Files must live in the caller's own folder.
+    for (const a of data.attachments) {
+      if (!a.path.startsWith(`${userId}/`)) throw new Error("You can only attach your own files");
+    }
+
+    const text = data.message.trim() || "Please help me with the attached file(s).";
+
     let convId = data.conversationId;
     if (!convId) {
-      const { data: conv, error } = await supabase.from("ai_conversations").insert({
-        user_id: userId, title: data.message.slice(0, 60),
-      }).select().single();
+      const title = (data.message.trim() || data.attachments[0]?.name || "New conversation").slice(0, 60);
+      const { data: conv, error } = await supabase.from("ai_conversations").insert({ user_id: userId, title }).select().single();
       if (error) throw new Error(error.message);
       convId = conv.id;
     }
 
     const { data: history } = await supabase.from("ai_messages")
-      .select("role, content").eq("conversation_id", convId).order("created_at");
+      .select("role, content, attachments").eq("conversation_id", convId).order("created_at");
 
-    await supabase.from("ai_messages").insert({ conversation_id: convId, role: "user", content: data.message });
-
-    const messages = [
-      { role: "system", content: SYSTEM },
-      ...((history as { role: string; content: string }[]) ?? []),
-      { role: "user", content: data.message },
-    ];
-
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({ model: "google/gemini-2.5-flash", messages }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      if (res.status === 429) throw new Error("Rate limit hit. Please try again in a moment.");
-      if (res.status === 402) throw new Error("AI credits exhausted. Please add credits in your workspace.");
-      throw new Error(`AI error [${res.status}]: ${body}`);
+    // Re-send files from earlier turns (most recent first, capped) so follow-up questions still see them.
+    const prior = (history ?? []) as { role: string; content: string; attachments: TutorAttachment[] | null }[];
+    let budget = Math.max(0, 5 - data.attachments.length);
+    const keepFiles = new Set<number>();
+    for (let i = prior.length - 1; i >= 0 && budget > 0; i--) {
+      const n = prior[i].attachments?.length ?? 0;
+      if (prior[i].role === "user" && n > 0 && n <= budget) { keepFiles.add(i); budget -= n; }
     }
-    const j = await res.json();
-    const reply: string = j.choices?.[0]?.message?.content ?? "";
+
+    const input: unknown[] = [];
+    for (let i = 0; i < prior.length; i++) {
+      const m = prior[i];
+      if (m.role === "assistant") {
+        input.push({ role: "assistant", content: [{ type: "output_text", text: m.content }] });
+        continue;
+      }
+      const atts = m.attachments ?? [];
+      const parts: unknown[] = [{ type: "input_text", text: m.content }];
+      if (atts.length && keepFiles.has(i)) parts.push(...(await buildAttachmentParts(supabase, atts)));
+      else if (atts.length) parts.push({ type: "input_text", text: `[Earlier attachments: ${atts.map((a) => a.name).join(", ")}]` });
+      input.push({ role: "user", content: parts });
+    }
+
+    const newParts = await buildAttachmentParts(supabase, data.attachments);
+    input.push({ role: "user", content: [{ type: "input_text", text }, ...newParts] });
+
+    await supabase.from("ai_messages").insert({
+      conversation_id: convId, role: "user", content: text, attachments: data.attachments,
+    });
+
+    const reply = await streamResponsesText({ apiKey: key, model: MODEL, instructions: SYSTEM, input });
     await supabase.from("ai_messages").insert({ conversation_id: convId, role: "assistant", content: reply });
 
     return { conversationId: convId, reply };
@@ -71,6 +100,6 @@ export const tutorLoadMessages = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ conversationId: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     const { data: msgs } = await context.supabase.from("ai_messages")
-      .select("id, role, content, created_at").eq("conversation_id", data.conversationId).order("created_at");
-    return msgs ?? [];
+      .select("id, role, content, attachments, created_at").eq("conversation_id", data.conversationId).order("created_at");
+    return (msgs ?? []).map((m) => ({ ...m, attachments: (m.attachments ?? []) as TutorAttachment[] }));
   });
