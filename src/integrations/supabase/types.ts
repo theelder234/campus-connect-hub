@@ -37,6 +37,7 @@ export type Database = {
       }
       ai_messages: {
         Row: {
+          attachments: Json
           content: string
           conversation_id: string
           created_at: string
@@ -44,6 +45,7 @@ export type Database = {
           role: string
         }
         Insert: {
+          attachments?: Json
           content: string
           conversation_id: string
           created_at?: string
@@ -51,6 +53,7 @@ export type Database = {
           role: string
         }
         Update: {
+          attachments?: Json
           content?: string
           conversation_id?: string
           created_at?: string
@@ -209,6 +212,10 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          attachment_type: string | null
           channel_id: string
           content: string
           created_at: string
@@ -216,6 +223,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           channel_id: string
           content: string
           created_at?: string
@@ -223,6 +234,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           channel_id?: string
           content?: string
           created_at?: string
