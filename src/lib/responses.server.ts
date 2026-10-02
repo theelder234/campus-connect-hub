@@ -58,6 +58,6 @@ export async function streamResponsesText(opts: {
       }
     }
   }
-  if (!out.trim()) throw new Error("The tutor returned an empty answer. Please rephrase your request as a new message.");
+  if (!out.trim()) throw new Error("The tutor returned an empty answer. Please try a new question.");
   return out;
 }
