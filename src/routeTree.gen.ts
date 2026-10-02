@@ -16,6 +16,7 @@ import { Route as AuthenticatedTutorRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedStudyNotesRouteImport } from './routes/_authenticated/study-notes'
 import { Route as AuthenticatedResourcesRouteImport } from './routes/_authenticated/resources'
 import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
+import { Route as AuthenticatedGroupChatRouteImport } from './routes/_authenticated/group-chat'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
@@ -56,6 +57,11 @@ const AuthenticatedResourcesRoute = AuthenticatedResourcesRouteImport.update({
 const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
   id: '/members',
   path: '/members',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGroupChatRoute = AuthenticatedGroupChatRouteImport.update({
+  id: '/group-chat',
+  path: '/group-chat',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/chat': typeof AuthenticatedChatRoute
+  '/group-chat': typeof AuthenticatedGroupChatRoute
   '/members': typeof AuthenticatedMembersRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/study-notes': typeof AuthenticatedStudyNotesRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/chat': typeof AuthenticatedChatRoute
+  '/group-chat': typeof AuthenticatedGroupChatRoute
   '/members': typeof AuthenticatedMembersRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/study-notes': typeof AuthenticatedStudyNotesRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/announcements': typeof AuthenticatedAnnouncementsRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
+  '/_authenticated/group-chat': typeof AuthenticatedGroupChatRoute
   '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/resources': typeof AuthenticatedResourcesRoute
   '/_authenticated/study-notes': typeof AuthenticatedStudyNotesRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/announcements'
     | '/chat'
+    | '/group-chat'
     | '/members'
     | '/resources'
     | '/study-notes'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/announcements'
     | '/chat'
+    | '/group-chat'
     | '/members'
     | '/resources'
     | '/study-notes'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/announcements'
     | '/_authenticated/chat'
+    | '/_authenticated/group-chat'
     | '/_authenticated/members'
     | '/_authenticated/resources'
     | '/_authenticated/study-notes'
@@ -246,6 +258,13 @@ declare module '@tanstack/react-router' {
       path: '/members'
       fullPath: '/members'
       preLoaderRoute: typeof AuthenticatedMembersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/group-chat': {
+      id: '/_authenticated/group-chat'
+      path: '/group-chat'
+      fullPath: '/group-chat'
+      preLoaderRoute: typeof AuthenticatedGroupChatRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/chat': {
@@ -322,6 +341,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedAnnouncementsRoute: typeof AuthenticatedAnnouncementsRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
+  AuthenticatedGroupChatRoute: typeof AuthenticatedGroupChatRoute
   AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
   AuthenticatedStudyNotesRoute: typeof AuthenticatedStudyNotesRoute
@@ -332,6 +352,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedAnnouncementsRoute: AuthenticatedAnnouncementsRoute,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
+  AuthenticatedGroupChatRoute: AuthenticatedGroupChatRoute,
   AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
   AuthenticatedStudyNotesRoute: AuthenticatedStudyNotesRoute,
@@ -350,3 +371,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

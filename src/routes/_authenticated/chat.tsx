@@ -8,12 +8,38 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Send, Hash, Menu, LogOut, Trash2 } from "lucide-react";
+import { Plus, Send, Hash, Menu, LogOut, Trash2, Paperclip, FileText, Download } from "lucide-react";
+import { PendingAttachments, type PendingFile } from "@/components/AttachmentPicker";
+import { CHAT_ACCEPT, formatBytes, safeName, uploadWithProgress, validateFile } from "@/lib/uploads";
 
 export const Route = createFileRoute("/_authenticated/chat")({ component: ChatPage, head: () => ({ meta: [{ title: "Chat — CampusLink" }] }) });
 
 type Channel = { id: string; name: string; description: string | null; type: string; created_by: string | null };
-type Msg = { id: string; content: string; user_id: string; created_at: string };
+type Msg = { id: string; content: string; user_id: string; created_at: string; attachment_path?: string | null; attachment_name?: string | null; attachment_type?: string | null; attachment_size?: number | null };
+
+function AttachmentView({ m }: { m: Msg }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const isImage = !!m.attachment_type?.startsWith("image/");
+  useEffect(() => {
+    if (!m.attachment_path || !isImage) return;
+    supabase.storage.from("chat-attachments").createSignedUrl(m.attachment_path, 3600).then(({ data }) => setUrl(data?.signedUrl ?? null));
+  }, [m.attachment_path, isImage]);
+  if (!m.attachment_path) return null;
+  const download = async () => {
+    const { data, error } = await supabase.storage.from("chat-attachments").createSignedUrl(m.attachment_path!, 60, { download: m.attachment_name ?? true });
+    if (error || !data) return toast.error(error?.message ?? "Could not open file");
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+  if (isImage && url) return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={m.attachment_name ?? "image"} className="mt-1 max-h-64 rounded-lg" /></a>;
+  return (
+    <button type="button" onClick={download} className="mt-1 flex items-center gap-2 rounded-lg border bg-background/60 px-2 py-1.5 text-left text-xs text-foreground hover:bg-accent">
+      <FileText className="h-4 w-4 shrink-0 text-primary" />
+      <span className="min-w-0 truncate">{m.attachment_name}</span>
+      {m.attachment_size ? <span className="text-muted-foreground">{formatBytes(m.attachment_size)}</span> : null}
+      <Download className="h-3 w-3 shrink-0" />
+    </button>
+  );
+}
 
 function ChatPage() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -22,6 +48,9 @@ function ChatPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
+  const [pending, setPending] = useState<PendingFile | null>(null);
+  const [sending, setSending] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [userId, setUserId] = useState<string>("");
   const [openNew, setOpenNew] = useState(false);
@@ -74,13 +103,32 @@ function ChatPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  const pickFile = (f: File | undefined) => {
+    if (fileRef.current) fileRef.current.value = "";
+    if (!f) return;
+    const err = validateFile(f, "chat");
+    if (err) return toast.error(err);
+    setPending({ id: crypto.randomUUID(), file: f, progress: 0 });
+  };
+
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim() || !activeId) return;
-    const content = text.trim();
-    setText("");
-    const { error } = await supabase.from("messages").insert({ channel_id: activeId, user_id: userId, content });
-    if (error) toast.error(error.message);
+    if ((!text.trim() && !pending) || !activeId || sending) return;
+    setSending(true);
+    try {
+      let att = {};
+      if (pending) {
+        const path = `${activeId}/${userId}/${crypto.randomUUID()}-${safeName(pending.file.name)}`;
+        await uploadWithProgress("chat-attachments", path, pending.file, (p) => setPending((c) => (c ? { ...c, progress: p } : c)));
+        att = { attachment_path: path, attachment_name: pending.file.name, attachment_type: pending.file.type || null, attachment_size: pending.file.size };
+      }
+      const { error } = await supabase.from("messages").insert({ channel_id: activeId, user_id: userId, content: text.trim(), ...att });
+      if (error) throw error;
+      setText(""); setPending(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send");
+      setPending((c) => (c ? { ...c, progress: 0 } : c));
+    } finally { setSending(false); }
   };
 
   const create = async () => {
@@ -220,16 +268,24 @@ function ChatPage() {
               <div key={m.id} className={`flex ${m.user_id === userId ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${m.user_id === userId ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                   <div className="mb-0.5 text-xs opacity-70">{profiles[m.user_id] ?? "…"}</div>
-                  {m.content}
+                  {m.content ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
+                  <AttachmentView m={m} />
                 </div>
               </div>
             ))}
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
-        <form onSubmit={send} className="flex gap-2 border-t p-3">
-          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={!activeId ? "Join or create a channel" : isMember ? "Message" : "Join this group to chat"} disabled={!activeId || !isMember} />
-          <Button type="submit" disabled={!activeId || !isMember || !text.trim()}><Send className="h-4 w-4" /></Button>
+        <form onSubmit={send} className="border-t p-3">
+          <PendingAttachments items={pending ? [pending] : []} disabled={sending} onRemove={() => setPending(null)} />
+          <div className="flex gap-2">
+            <input ref={fileRef} type="file" accept={CHAT_ACCEPT} className="hidden" data-testid="chat-file-input" onChange={(e) => pickFile(e.target.files?.[0])} />
+            <Button type="button" variant="outline" size="icon" aria-label="Attach a file" disabled={!activeId || !isMember || sending} onClick={() => fileRef.current?.click()}>
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={!activeId ? "Join or create a channel" : isMember ? "Message" : "Join this group to chat"} disabled={!activeId || !isMember} />
+            <Button type="submit" aria-label="Send" disabled={!activeId || !isMember || sending || (!text.trim() && !pending)}><Send className="h-4 w-4" /></Button>
+          </div>
         </form>
       </div>
     </div>
