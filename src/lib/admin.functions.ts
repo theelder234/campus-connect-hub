@@ -98,6 +98,76 @@ export const setUserRole = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Create a confirmed account with a password and initial role. */
+export const createUser = createServerFn({ method: "POST" })
+  .inputValidator((v: unknown) =>
+    z.object({
+      email: z.string().trim().email().max(255),
+      password: z.string().min(8).max(72),
+      full_name: z.string().trim().min(1).max(100),
+      department: z.string().trim().max(100).optional(),
+      role: RoleSchema,
+    }).parse(v),
+  )
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { full_name: data.full_name },
+    });
+    if (error || !created.user) throw new Error(error?.message ?? "Could not create user");
+    const id = created.user.id;
+    await supabaseAdmin.from("profiles").update({ full_name: data.full_name, department: data.department || null }).eq("id", id);
+    if (data.role !== "student") {
+      await supabaseAdmin.from("user_roles").upsert({ user_id: id, role: data.role }, { onConflict: "user_id,role" });
+    }
+    return { id };
+  });
+
+/** Update a member's name, department and (optionally) email. */
+export const updateUser = createServerFn({ method: "POST" })
+  .inputValidator((v: unknown) =>
+    z.object({
+      userId: z.string().uuid(),
+      full_name: z.string().trim().min(1).max(100),
+      department: z.string().trim().max(100).optional(),
+      email: z.string().trim().email().max(255).optional(),
+    }).parse(v),
+  )
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.email) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { email: data.email, email_confirm: true });
+      if (error) throw new Error(error.message);
+    }
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ full_name: data.full_name, department: data.department || null })
+      .eq("id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Permanently delete an account (cannot delete yourself). */
+export const deleteUser = createServerFn({ method: "POST" })
+  .inputValidator((v: unknown) => z.object({ userId: z.string().uuid() }).parse(v))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    if (data.userId === context.userId) throw new Error("You cannot delete your own account");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 /** Platform-wide counts + 14-day activity series for the admin dashboard. */
 export const adminStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
