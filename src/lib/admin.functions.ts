@@ -162,6 +162,9 @@ export const deleteUser = createServerFn({ method: "POST" })
     await assertAdmin(context);
     if (data.userId === context.userId) throw new Error("You cannot delete your own account");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Channels they created stay, just without a creator (FK has no cascade).
+    await supabaseAdmin.from("channels").update({ created_by: null }).eq("created_by", data.userId);
+    await supabaseAdmin.from("study_notes").delete().eq("user_id", data.userId);
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
