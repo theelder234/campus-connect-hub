@@ -8,14 +8,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Send, Hash, Menu, LogOut, Trash2, Paperclip, FileText, Download } from "lucide-react";
+import { Plus, Send, Hash, Menu, LogOut, Trash2, Paperclip, FileText, Download, Pencil } from "lucide-react";
 import { PendingAttachments, type PendingFile } from "@/components/AttachmentPicker";
 import { CHAT_ACCEPT, formatBytes, safeName, uploadWithProgress, validateFile } from "@/lib/uploads";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 
 export const Route = createFileRoute("/_authenticated/chat")({ component: ChatPage, head: () => ({ meta: [{ title: "Chat — CampusLink" }] }) });
 
 type Channel = { id: string; name: string; description: string | null; type: string; created_by: string | null };
-type Msg = { id: string; content: string; user_id: string; created_at: string; attachment_path?: string | null; attachment_name?: string | null; attachment_type?: string | null; attachment_size?: number | null };
+type Msg = { id: string; content: string; user_id: string; created_at: string; edited_at?: string | null; attachment_path?: string | null; attachment_name?: string | null; attachment_type?: string | null; attachment_size?: number | null };
 
 function AttachmentView({ m }: { m: Msg }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -57,6 +58,8 @@ function ChatPage() {
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [editChan, setEditChan] = useState<Channel | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,7 +90,11 @@ function ChatPage() {
     });
     const channel = supabase.channel(`messages:${activeId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `channel_id=eq.${activeId}` },
-        (payload) => setMessages((m) => [...m, payload.new as Msg]))
+        (payload) => setMessages((m) => (m.some((x) => x.id === (payload.new as Msg).id) ? m : [...m, payload.new as Msg])))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `channel_id=eq.${activeId}` },
+        (payload) => setMessages((m) => m.map((x) => (x.id === (payload.new as Msg).id ? (payload.new as Msg) : x))))
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" },
+        (payload) => setMessages((m) => m.filter((x) => x.id !== (payload.old as { id: string }).id)))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [activeId]);
@@ -171,13 +178,36 @@ function ChatPage() {
   };
 
   const removeChannel = async (id: string) => {
-    if (!confirm("Delete this group and all of its messages?")) return;
     const { error } = await supabase.from("channels").delete().eq("id", id);
     if (error) return toast.error(error.message);
     setChannels((c) => c.filter((x) => x.id !== id));
     setMemberOf((m) => m.filter((x) => x !== id));
     if (activeId === id) { setActiveId(null); setMessages([]); }
     toast.success("Group deleted");
+  };
+
+  const saveChannel = async () => {
+    if (!editChan || !editChan.name.trim()) return;
+    const { error } = await supabase.from("channels").update({ name: editChan.name.trim(), description: editChan.description?.trim() || null }).eq("id", editChan.id);
+    if (error) return toast.error(error.message);
+    setChannels((c) => c.map((x) => (x.id === editChan.id ? { ...x, name: editChan.name.trim(), description: editChan.description } : x)));
+    setEditChan(null);
+    toast.success("Group updated");
+  };
+
+  const saveMessage = async () => {
+    if (!editing) return;
+    const { error } = await supabase.from("messages").update({ content: editing.text.trim(), edited_at: new Date().toISOString() }).eq("id", editing.id);
+    if (error) return toast.error(error.message);
+    setMessages((m) => m.map((x) => (x.id === editing.id ? { ...x, content: editing.text.trim(), edited_at: new Date().toISOString() } : x)));
+    setEditing(null);
+  };
+
+  const deleteMessage = async (m: Msg) => {
+    const { error } = await supabase.from("messages").delete().eq("id", m.id);
+    if (error) return toast.error(error.message);
+    if (m.attachment_path) await supabase.storage.from("chat-attachments").remove([m.attachment_path]);
+    setMessages((cur) => cur.filter((x) => x.id !== m.id));
   };
 
   const newChannelButton = (
@@ -256,23 +286,57 @@ function ChatPage() {
             <Button size="sm" variant="outline" onClick={() => join(active.id)}>Join</Button>
           )}
           {canDelete && (
-            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeChannel(active!.id)} aria-label="Delete group">
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <>
+              <Button size="icon" variant="ghost" onClick={() => setEditChan(active!)} aria-label="Edit group"><Pencil className="h-4 w-4" /></Button>
+              <ConfirmDelete label="Delete group" title={`Delete #${active!.name}?`} description="This deletes the group and all of its messages for everyone."
+                onConfirm={() => removeChannel(active!.id)} />
+            </>
           )}
           <div className="md:hidden">{newChannelButton}</div>
         </div>
+        <Dialog open={!!editChan} onOpenChange={(o) => !o && setEditChan(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit group</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div><Label>Name</Label><Input value={editChan?.name ?? ""} onChange={(e) => setEditChan((c) => (c ? { ...c, name: e.target.value } : c))} /></div>
+              <div><Label>Description</Label><Input value={editChan?.description ?? ""} onChange={(e) => setEditChan((c) => (c ? { ...c, description: e.target.value } : c))} /></div>
+            </div>
+            <DialogFooter><Button onClick={saveChannel}>Save</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-3">
-            {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.user_id === userId ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${m.user_id === userId ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                  <div className="mb-0.5 text-xs opacity-70">{profiles[m.user_id] ?? "…"}</div>
-                  {m.content ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
+            {messages.map((m) => {
+              const mine = m.user_id === userId;
+              return (
+              <div key={m.id} className={`group flex items-start gap-1 ${mine ? "justify-end" : "justify-start"}`}>
+                {(mine || isAdmin) && editing?.id !== m.id && (
+                  <div className={`flex gap-0.5 opacity-60 group-hover:opacity-100 ${mine ? "order-first" : "order-last"}`}>
+                    {mine && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Edit message" onClick={() => setEditing({ id: m.id, text: m.content })}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <ConfirmDelete label="Delete message" title="Delete this message?" description="It will be removed for everyone in the group." onConfirm={() => deleteMessage(m)} />
+                  </div>
+                )}
+                <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                  <div className="mb-0.5 text-xs opacity-70">{profiles[m.user_id] ?? "…"}{m.edited_at ? " · edited" : ""}</div>
+                  {editing?.id === m.id ? (
+                    <div className="space-y-1">
+                      <Input value={editing.text} autoFocus className="bg-background text-foreground" aria-label="Edit message text"
+                        onChange={(e) => setEditing({ id: m.id, text: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveMessage(); } if (e.key === "Escape") setEditing(null); }} />
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="secondary" type="button" onClick={() => setEditing(null)}>Cancel</Button>
+                        <Button size="sm" variant="secondary" type="button" onClick={saveMessage}>Save</Button>
+                      </div>
+                    </div>
+                  ) : m.content ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
                   <AttachmentView m={m} />
                 </div>
               </div>
-            ))}
+            );})}
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
