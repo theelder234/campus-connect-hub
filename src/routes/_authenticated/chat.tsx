@@ -8,14 +8,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Send, Hash, Menu, LogOut, Trash2, Paperclip, FileText, Download } from "lucide-react";
+import { Plus, Send, Hash, Menu, LogOut, Trash2, Paperclip, FileText, Download, Pencil } from "lucide-react";
 import { PendingAttachments, type PendingFile } from "@/components/AttachmentPicker";
 import { CHAT_ACCEPT, formatBytes, safeName, uploadWithProgress, validateFile } from "@/lib/uploads";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 
 export const Route = createFileRoute("/_authenticated/chat")({ component: ChatPage, head: () => ({ meta: [{ title: "Chat — CampusLink" }] }) });
 
 type Channel = { id: string; name: string; description: string | null; type: string; created_by: string | null };
-type Msg = { id: string; content: string; user_id: string; created_at: string; attachment_path?: string | null; attachment_name?: string | null; attachment_type?: string | null; attachment_size?: number | null };
+type Msg = { id: string; content: string; user_id: string; created_at: string; edited_at?: string | null; attachment_path?: string | null; attachment_name?: string | null; attachment_type?: string | null; attachment_size?: number | null };
 
 function AttachmentView({ m }: { m: Msg }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -57,6 +58,8 @@ function ChatPage() {
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [editChan, setEditChan] = useState<Channel | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,7 +90,11 @@ function ChatPage() {
     });
     const channel = supabase.channel(`messages:${activeId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `channel_id=eq.${activeId}` },
-        (payload) => setMessages((m) => [...m, payload.new as Msg]))
+        (payload) => setMessages((m) => (m.some((x) => x.id === (payload.new as Msg).id) ? m : [...m, payload.new as Msg])))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `channel_id=eq.${activeId}` },
+        (payload) => setMessages((m) => m.map((x) => (x.id === (payload.new as Msg).id ? (payload.new as Msg) : x))))
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" },
+        (payload) => setMessages((m) => m.filter((x) => x.id !== (payload.old as { id: string }).id)))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [activeId]);
@@ -171,13 +178,36 @@ function ChatPage() {
   };
 
   const removeChannel = async (id: string) => {
-    if (!confirm("Delete this group and all of its messages?")) return;
     const { error } = await supabase.from("channels").delete().eq("id", id);
     if (error) return toast.error(error.message);
     setChannels((c) => c.filter((x) => x.id !== id));
     setMemberOf((m) => m.filter((x) => x !== id));
     if (activeId === id) { setActiveId(null); setMessages([]); }
     toast.success("Group deleted");
+  };
+
+  const saveChannel = async () => {
+    if (!editChan || !editChan.name.trim()) return;
+    const { error } = await supabase.from("channels").update({ name: editChan.name.trim(), description: editChan.description?.trim() || null }).eq("id", editChan.id);
+    if (error) return toast.error(error.message);
+    setChannels((c) => c.map((x) => (x.id === editChan.id ? { ...x, name: editChan.name.trim(), description: editChan.description } : x)));
+    setEditChan(null);
+    toast.success("Group updated");
+  };
+
+  const saveMessage = async () => {
+    if (!editing) return;
+    const { error } = await supabase.from("messages").update({ content: editing.text.trim(), edited_at: new Date().toISOString() }).eq("id", editing.id);
+    if (error) return toast.error(error.message);
+    setMessages((m) => m.map((x) => (x.id === editing.id ? { ...x, content: editing.text.trim(), edited_at: new Date().toISOString() } : x)));
+    setEditing(null);
+  };
+
+  const deleteMessage = async (m: Msg) => {
+    const { error } = await supabase.from("messages").delete().eq("id", m.id);
+    if (error) return toast.error(error.message);
+    if (m.attachment_path) await supabase.storage.from("chat-attachments").remove([m.attachment_path]);
+    setMessages((cur) => cur.filter((x) => x.id !== m.id));
   };
 
   const newChannelButton = (
