@@ -286,23 +286,57 @@ function ChatPage() {
             <Button size="sm" variant="outline" onClick={() => join(active.id)}>Join</Button>
           )}
           {canDelete && (
-            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeChannel(active!.id)} aria-label="Delete group">
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <>
+              <Button size="icon" variant="ghost" onClick={() => setEditChan(active!)} aria-label="Edit group"><Pencil className="h-4 w-4" /></Button>
+              <ConfirmDelete label="Delete group" title={`Delete #${active!.name}?`} description="This deletes the group and all of its messages for everyone."
+                onConfirm={() => removeChannel(active!.id)} />
+            </>
           )}
           <div className="md:hidden">{newChannelButton}</div>
         </div>
+        <Dialog open={!!editChan} onOpenChange={(o) => !o && setEditChan(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit group</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div><Label>Name</Label><Input value={editChan?.name ?? ""} onChange={(e) => setEditChan((c) => (c ? { ...c, name: e.target.value } : c))} /></div>
+              <div><Label>Description</Label><Input value={editChan?.description ?? ""} onChange={(e) => setEditChan((c) => (c ? { ...c, description: e.target.value } : c))} /></div>
+            </div>
+            <DialogFooter><Button onClick={saveChannel}>Save</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-3">
-            {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.user_id === userId ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${m.user_id === userId ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                  <div className="mb-0.5 text-xs opacity-70">{profiles[m.user_id] ?? "…"}</div>
-                  {m.content ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
+            {messages.map((m) => {
+              const mine = m.user_id === userId;
+              return (
+              <div key={m.id} className={`group flex items-start gap-1 ${mine ? "justify-end" : "justify-start"}`}>
+                {(mine || isAdmin) && editing?.id !== m.id && (
+                  <div className={`flex gap-0.5 opacity-60 group-hover:opacity-100 ${mine ? "order-first" : "order-last"}`}>
+                    {mine && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Edit message" onClick={() => setEditing({ id: m.id, text: m.content })}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <ConfirmDelete label="Delete message" title="Delete this message?" description="It will be removed for everyone in the group." onConfirm={() => deleteMessage(m)} />
+                  </div>
+                )}
+                <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                  <div className="mb-0.5 text-xs opacity-70">{profiles[m.user_id] ?? "…"}{m.edited_at ? " · edited" : ""}</div>
+                  {editing?.id === m.id ? (
+                    <div className="space-y-1">
+                      <Input value={editing.text} autoFocus className="bg-background text-foreground" aria-label="Edit message text"
+                        onChange={(e) => setEditing({ id: m.id, text: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveMessage(); } if (e.key === "Escape") setEditing(null); }} />
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="secondary" type="button" onClick={() => setEditing(null)}>Cancel</Button>
+                        <Button size="sm" variant="secondary" type="button" onClick={saveMessage}>Save</Button>
+                      </div>
+                    </div>
+                  ) : m.content ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
                   <AttachmentView m={m} />
                 </div>
               </div>
-            ))}
+            );})}
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
