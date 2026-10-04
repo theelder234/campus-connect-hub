@@ -183,12 +183,49 @@ export type Database = {
         }
         Relationships: []
       }
+      events: {
+        Row: {
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          id: string
+          is_public: boolean
+          location: string | null
+          starts_at: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_public?: boolean
+          location?: string | null
+          starts_at: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_public?: boolean
+          location?: string | null
+          starts_at?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_messages: {
         Row: {
           attachment_name: string | null
           attachment_path: string | null
           body: string | null
           created_at: string
+          edited_at: string | null
           id: string
           sender_id: string
         }
@@ -197,6 +234,7 @@ export type Database = {
           attachment_path?: string | null
           body?: string | null
           created_at?: string
+          edited_at?: string | null
           id?: string
           sender_id: string
         }
@@ -205,6 +243,7 @@ export type Database = {
           attachment_path?: string | null
           body?: string | null
           created_at?: string
+          edited_at?: string | null
           id?: string
           sender_id?: string
         }
@@ -219,6 +258,7 @@ export type Database = {
           channel_id: string
           content: string
           created_at: string
+          edited_at: string | null
           id: string
           user_id: string
         }
@@ -230,6 +270,7 @@ export type Database = {
           channel_id: string
           content: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           user_id: string
         }
@@ -241,6 +282,7 @@ export type Database = {
           channel_id?: string
           content?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           user_id?: string
         }

@@ -8,6 +8,13 @@
       "when": 1790947888225,
       "tag": "0000_chat_and_tutor_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791078221344,
+      "tag": "0001_crud_audit_policies_events",
+      "breakpoints": true
     }
   ]
 }
